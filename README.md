@@ -6,10 +6,8 @@ Node based on ROS(hydro) reading MTi data. Tested on Ubuntu 12.04LTS with the 3r
 
 Preparation
 ------------
-1.Install ROS(hydro)
-
+1.Install ROS(hydro).
 2.Follow the instruction bellow.
-
 
 Installation
 ------------
@@ -22,7 +20,6 @@ Open a terminal:
         $ cd ..
         $ catkin_make
         $ catkin_make install
-
 
 Run
 ------------
@@ -38,11 +35,10 @@ Open another terminal:
          $ sudo su
          $ cd ~/catkin_ws
          $ source devel
-         $ rosrun xsens_reader xsens_reader
-
+         $ rosrun xsens_reader xsens_reader -d /dev/ttyUSB0
 
 Note
 ------------
-xsens_reader publishes the sensor_msgs::Imu message of "/xsens_data"
-
-$ rostopic echo /xsens_data  #to show the message of MTi
+Try USB1 USB2 if you can't connect to the port.
+xsens_reader publishes the sensor_msgs::Imu message of "/xsens_data".
+$ rostopic echo /xsens_data  #to show the message of MTi.
