@@ -5,13 +5,13 @@ Node based on ROS(hydro) reading MTi data. Tested on Ubuntu 12.04LTS with the 3r
 
 
 Preparation
-============
+------------
 1.Install ROS(hydro)
 2.Follow the instruction bellow.
 
 
 Installation
-============
+------------
 Caution: Only for hydro user
          I'm quite sorry that I'm still working on xsens_reader package compatible with other version of ROS.
          
@@ -23,7 +23,7 @@ $ catkin_make install
 
 
 Run
-============
+------------
 Open a terminal:
          $ sudo su
          $ cd ~/catkin_ws
@@ -37,6 +37,6 @@ Open another terminal:
 
 
 Note
-============
+------------
 xsens_reader publishes the sensor_msgs::Imu message of "/xsens_data"
 $ rostopic echo /xsens_data  #to show the message of MTi
