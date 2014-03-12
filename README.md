@@ -15,17 +15,13 @@ Installation
 ------------
 Caution: Only for hydro user
          I'm quite sorry that I'm still working on xsens_reader package compatible with other version of ROS.
-         
-$ sudo cd ~/catkin_ws/src
+Open a terminal:
 
-$ git clone https://github.com/JJJJJJJack/xsens_reader.git
-
-$ cd ..
-
-$ catkin_make
-
-$ catkin_make install
-
+        $ sudo cd ~/catkin_ws/src
+        $ git clone https://github.com/JJJJJJJack/xsens_reader.git
+        $ cd ..
+        $ catkin_make
+        $ catkin_make install
 
 
 Run
