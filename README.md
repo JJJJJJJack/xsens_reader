@@ -7,6 +7,7 @@ Node based on ROS(hydro) reading MTi data. Tested on Ubuntu 12.04LTS with the 3r
 Preparation
 ------------
 1.Install ROS(hydro).
+
 2.Follow the instruction bellow.
 
 Installation
@@ -40,5 +41,7 @@ Open another terminal:
 Note
 ------------
 Try USB1 USB2 if you can't connect to the port.
+
 xsens_reader publishes the sensor_msgs::Imu message of "/xsens_data".
+
 $ rostopic echo /xsens_data  #to show the message of MTi.
