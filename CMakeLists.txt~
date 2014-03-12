@@ -1,0 +1,28 @@
+cmake_minimum_required(VERSION 2.8.3)
+project(xsens_reader)
+
+
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  rospy
+  std_msgs
+  message_generation
+)
+
+catkin_package(
+  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
+)
+
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
+
+
+ add_executable(xsens_reader 
+                  src/xsens_reader.cpp 
+                  src/xsens_reader/cmdargsreader.cpp
+                  src/xsens_reader/MTComm.cpp
+                  src/xsens_reader/timeval_ops.c
+                  src/xsens_reader/xsensDriver.cpp)
+ target_link_libraries(xsens_reader ${catkin_LIBRARIES})
+

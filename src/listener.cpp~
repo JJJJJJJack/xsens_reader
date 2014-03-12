@@ -1,0 +1,175 @@
+
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+#include <sensor_msgs/Imu.h>
+#include <px_comm/OpticalFlow.h>
+
+struct KF{
+  double state_new, state_old;
+  double p_new, p_old;
+  double Kg;
+  double Rww, Rvv, w;
+};
+
+using namespace ros;
+
+sensor_msgs::Imu local_imu_data;
+px_comm::OpticalFlow local_optical_data;
+bool first_run;
+double roll, yaw, pitch, yaw_oriental;
+
+
+/**
+ * This tutorial demonstrates simple receipt of messages over the ROS system.
+ */
+// %Tag(CALLBACK)%
+void imuCallback(const sensor_msgs::Imu& rc_imu_data)
+{
+
+  local_imu_data.orientation.x = rc_imu_data.orientation.x;
+  local_imu_data.orientation.y = rc_imu_data.orientation.y;
+  local_imu_data.orientation.z = rc_imu_data.orientation.z;
+  local_imu_data.orientation.w = rc_imu_data.orientation.w;
+
+  roll  =  asin( 2*(local_imu_data.orientation.w*local_imu_data.orientation.y-local_imu_data.orientation.x*local_imu_data.orientation.z) );
+
+  yaw   =  atan2( 2*(local_imu_data.orientation.w*local_imu_data.orientation.z+local_imu_data.orientation.x*local_imu_data.orientation.y) , (local_imu_data.orientation.w*local_imu_data.orientation.w+local_imu_data.orientation.x*local_imu_data.orientation.x-local_imu_data.orientation.y*local_imu_data.orientation.y-local_imu_data.orientation.z*local_imu_data.orientation.z));
+
+  pitch = -atan( 2*(local_imu_data.orientation.w*local_imu_data.orientation.x+local_imu_data.orientation.y*local_imu_data.orientation.z) / (local_imu_data.orientation.w*local_imu_data.orientation.w-local_imu_data.orientation.x*local_imu_data.orientation.x-local_imu_data.orientation.y*local_imu_data.orientation.y+local_imu_data.orientation.z*local_imu_data.orientation.z));
+
+  if(first_run == true){
+    yaw_oriental = yaw;
+    first_run = false;
+  }
+  
+  //ROS_INFO("I heard: [%f]", yaw);
+}
+
+void opticalCallback(const px_comm::OpticalFlow& rc_optical_data)
+{
+  local_optical_data.ground_distance = rc_optical_data.ground_distance;
+  local_optical_data.velocity_x = rc_optical_data.velocity_x;
+  local_optical_data.velocity_y = rc_optical_data.velocity_y;
+  local_optical_data.quality    = rc_optical_data.quality;
+  //local_optical_data.position_x = rc_optical_data.position_x;
+  //local_optical_data.position_y = rc_optical_data.position_y;
+  local_optical_data.time_step  = rc_optical_data.time_step;
+  
+  //local_optical_data.position_x += (local_optical_data.velocity_x * local_optical_data.time_step) * cos(yaw - yaw_oriental);
+  //local_optical_data.position_y += (local_optical_data.velocity_y * local_optical_data.time_step) * sin(yaw - yaw_oriental);
+  
+  ROS_INFO("I heard position x: [%f]   [%f]", local_optical_data.position_x, local_optical_data.position_y);
+}
+// %EndTag(CALLBACK)%
+
+int main(int argc, char **argv)
+{
+  /**
+   * The ros::init() function needs to see argc and argv so that it can perform
+   * any ROS arguments and name remapping that were provided at the command line. For programmatic
+   * remappings you can use a different version of init() which takes remappings
+   * directly, but for most command-line programs, passing argc and argv is the easiest
+   * way to do it.  The third argument to init() is the name of the node.
+   *
+   * You must call one of the versions of ros::init() before using any other
+   * part of the ROS system.
+   */
+  ros::init(argc, argv, "listener");
+  KF kf_x, kf_y;
+
+  kf_x.Rvv = 0.01;
+  kf_x.Rww = 0.01;
+  kf_x.w = 0;
+  kf_x.state_old = 0;
+  kf_x.p_old = 10;
+
+  kf_y.Rvv = 0.01;
+  kf_y.Rww = 0.01;
+  kf_y.w = 0;
+  kf_y.state_old = 0;
+  kf_y.p_old = 10;
+
+  /**
+   * NodeHandle is the main access point to communications with the ROS system.
+   * The first NodeHandle constructed will fully initialize this node, and the last
+   * NodeHandle destructed will close down the node.
+   */
+  ros::NodeHandle n;
+  local_optical_data.position_x = 0;
+  local_optical_data.position_y = 0;
+  roll  = 0;
+  yaw   = 0;
+  pitch = 0;
+  first_run = true;
+  yaw_oriental = 0;
+  /**
+   * The subscribe() call is how you tell ROS that you want to receive messages
+   * on a given topic.  This invokes a call to the ROS
+   * master node, which keeps a registry of who is publishing and who
+   * is subscribing.  Messages are passed to a callback function, here
+   * called imuCallback.  subscribe() returns a Subscriber object that you
+   * must hold on to until you want to unsubscribe.  When all copies of the Subscriber
+   * object go out of scope, this callback will automatically be unsubscribed from
+   * this topic.
+   *
+   * The second parameter to the subscribe() function is the size of the message
+   * queue.  If messages are arriving faster than they are being processed, this
+   * is the number of messages that will be buffered up before beginning to throw
+   * away the oldest ones.
+   */
+// %Tag(SUBSCRIBER)%
+  ros::Subscriber sub_imu = n.subscribe("imu/data", 1000, imuCallback);
+  ros::Subscriber sub_optical = n.subscribe("px4flow/opt_flow", 1000, opticalCallback);
+  ros::Publisher pub_optical = n.advertise<px_comm::OpticalFlow>("fusion_Opt_Imu",1000);
+  ros::Rate loop_rate(100);
+// %EndTag(SUBSCRIBER)%
+
+  /**
+   * ros::spin() will enter a loop, pumping callbacks.  With this version, all
+   * callbacks will be called from within this thread (the main one).  ros::spin()
+   * will exit when Ctrl-C is pressed, or the node is shutdown by the master.
+   */
+// %Tag(SPIN)%
+  //ros::spin();
+// %EndTag(SPIN)%
+  while(ros::ok()){
+    //////////Kalman Predict////////////////
+    kf_x.state_new = kf_x.state_old + kf_x.w;
+    kf_y.state_new = kf_y.state_old + kf_y.w;
+
+    kf_x.p_new = kf_x.p_old + kf_x.Rww;
+    kf_y.p_new = kf_y.p_old + kf_y.Rww;
+    //////////Kalman Update/////////////////
+    kf_x.Kg = kf_x.p_new / (kf_x.p_new + kf_x.Rvv);
+    kf_y.Kg = kf_y.p_new / (kf_y.p_new + kf_y.Rvv);
+
+    kf_x.state_new = kf_x.state_new + kf_x.Kg * (local_optical_data.velocity_x - kf_x.state_new);
+    kf_y.state_new = kf_y.state_new + kf_y.Kg * (local_optical_data.velocity_y - kf_y.state_new);
+
+    kf_x.p_new = kf_x.p_new - kf_x.Kg * kf_x.p_new;
+    kf_y.p_new = kf_y.p_new - kf_y.Kg * kf_y.p_new;
+    //////////Give value///////////////////
+    //local_optical_data.velocity_x = kf_x.state_new;
+    //local_optical_data.velocity_y = kf_y.state_new;
+
+    kf_x.state_old = kf_x.state_new;
+    kf_y.state_old = kf_y.state_new;
+
+    kf_x.p_old = kf_x.p_new;
+    kf_y.p_old = kf_y.p_new;
+    //////////finished/////////////////////
+    local_optical_data.time_step = 1/100.0;
+    local_optical_data.position_x += (local_optical_data.velocity_x * local_optical_data.time_step) * cos(yaw - yaw_oriental) + (local_optical_data.velocity_y * local_optical_data.time_step) * sin(yaw - yaw_oriental);
+    local_optical_data.position_y += (local_optical_data.velocity_y * local_optical_data.time_step) * cos(yaw - yaw_oriental) + (local_optical_data.velocity_x * local_optical_data.time_step) * sin(yaw - yaw_oriental);
+
+    //local_optical_data.position_x += local_optical_data.velocity_x * 1/100.0;
+    //local_optical_data.position_y += local_optical_data.velocity_y * 1/100.0;
+
+    pub_optical.publish(local_optical_data);
+    ros::spinOnce();
+    loop_rate.sleep();
+  }
+  return 0;
+}
+// %EndTag(FULLTEXT)%
+
